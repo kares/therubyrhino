@@ -85,7 +85,7 @@ describe Rhino::JSError do
       e.javascript_backtrace(true).should be_a Enumerable
       e.javascript_backtrace(true).size.should >= 1
       element = e.javascript_backtrace(true)[0]
-      element.file_name.should == '<eval>'
+      element.file_name.should match '<eval>'
       element.function_name.should be nil
       element.line_number.should == 1
     else
@@ -99,7 +99,7 @@ describe Rhino::JSError do
     rescue => e
       e.javascript_backtrace.size.should >= 2
       e.javascript_backtrace[0].should =~ /at .*?<eval>:1 \(fortyTwo\)/
-      expect( e.javascript_backtrace.find { |trace| trace == "at <eval>:2" } ).to_not be nil
+      expect( e.javascript_backtrace.find { |trace| trace.end_with? "<eval>:2" } ).to_not be nil
     else
       fail "expected to rescue"
     end
