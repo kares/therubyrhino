@@ -24,8 +24,9 @@ shared_examples_for 'ScriptableObject', :shared => true do
   it "might be converted to a hash with string keys" do
     @object[42] = '42'
     @object[:foo] = 'bar'
-    expect = @object.respond_to?(:to_h_properties) ? @object.to_h_properties : {}
-    @object.to_h.should == expect.merge('42' => '42', 'foo' => 'bar')
+    prop_h = @object.to_h
+    expect( prop_h['42'] ).to eql '42'
+    expect( prop_h['foo'] ).to eql 'bar'
   end
   
   it "yields properties with each" do
@@ -66,13 +67,6 @@ describe "FunctionObject" do
     
     to_string = java.lang.Object.new.getClass.getMethod(:toString)
     @object = Rhino::JS::FunctionObject.new('to_string', to_string, scope)
-    @object.instance_eval do
-      def to_h_properties
-        h = { "arguments"=> nil, "name"=> "to_string", "arity"=> 0, "length"=> 0 }
-        RhinoHelpers.add_prototype_key(h) if Rhino.implementation_version < '1.7R4'
-        h
-      end
-    end
   end
 
   after do
@@ -80,6 +74,11 @@ describe "FunctionObject" do
   end
   
   it_should_behave_like 'ScriptableObject'
+
+  it 'has a length' do
+    prop_h = @object.to_h
+    expect( prop_h['length'] ).to_not be nil
+  end
   
 end
 
@@ -172,13 +171,6 @@ describe "NativeFunction" do
     
     object = @context.newObject(@scope)
     @object = Rhino::JS::ScriptableObject.getProperty(object, 'toString')
-    @object.instance_eval do
-      def to_h_properties
-        h = { "arguments"=> nil, "name"=> "toString", "arity"=> 0, "length"=> 0 }
-        RhinoHelpers.add_prototype_key(h) if Rhino.implementation_version < '1.7R4'
-        h
-      end
-    end
   end
 
   after do
@@ -257,29 +249,6 @@ describe "NativeFunction (constructor)" do
     factory.enterContext(@context)
     
     @object = Rhino::JS::ScriptableObject.getProperty(@context.newObject(@scope), 'constructor')
-    @object.instance_eval do
-      def to_h_properties
-        h = {
-          "arguments"=>nil, "prototype"=>{}, "name"=>"Object", "arity"=>1, "length"=>1,
-          
-          "getPrototypeOf"=> { "arguments"=>nil, "name"=>"getPrototypeOf", "arity"=>1, "length"=>1}, 
-          "keys"=>{"arguments"=>nil, "name"=>"keys", "arity"=>1, "length"=>1}, 
-          "getOwnPropertyNames"=>{"arguments"=>nil, "name"=>"getOwnPropertyNames", "arity"=>1, "length"=>1}, 
-          "getOwnPropertyDescriptor"=>{"arguments"=>nil, "name"=>"getOwnPropertyDescriptor", "arity"=>2, "length"=>2}, 
-          "defineProperty"=>{"arguments"=>nil, "name"=>"defineProperty", "arity"=>3, "length"=>3}, 
-          "isExtensible"=>{"arguments"=>nil, "name"=>"isExtensible", "arity"=>1, "length"=>1}, 
-          "preventExtensions"=>{"arguments"=>nil, "name"=>"preventExtensions", "arity"=>1, "length"=>1}, 
-          "defineProperties"=>{"arguments"=>nil, "name"=>"defineProperties", "arity"=>2, "length"=>2}, 
-          "create"=>{"arguments"=>nil, "name"=>"create", "arity"=>2, "length"=>2}, 
-          "isSealed"=>{"arguments"=>nil, "name"=>"isSealed", "arity"=>1, "length"=>1}, 
-          "isFrozen"=>{"arguments"=>nil, "name"=>"isFrozen", "arity"=>1, "length"=>1}, 
-          "seal"=>{"arguments"=>nil, "name"=>"seal", "arity"=>1, "length"=>1}, 
-          "freeze"=>{"arguments"=>nil, "name"=>"freeze", "arity"=>1, "length"=>1}
-        }
-        RhinoHelpers.add_prototype_key(h, :recurse) if Rhino.implementation_version < '1.7R4'
-        h
-      end
-    end
   end
 
   after do
@@ -287,7 +256,17 @@ describe "NativeFunction (constructor)" do
   end
   
   it_should_behave_like 'ScriptableObject'
-  
+
+  it 'has a length' do
+    prop_h = @object.to_h
+    expect( prop_h['length'] ).to_not be nil
+  end
+
+  it 'has keys property' do
+    prop_h = @object.to_h
+    expect( prop_h['keys'] ).to be_a Hash
+  end
+
   it 'is constructable' do
     @object.new.should be_a Rhino::JS::NativeObject
   end
