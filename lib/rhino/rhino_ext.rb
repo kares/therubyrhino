@@ -203,9 +203,10 @@ class Java::OrgMozillaJavascript::BaseFunction
   
   # Object call(Context context, Scriptable scope, Scriptable this, Object[] args)
   alias_method :__call__, :call
-  
+
+  include Rhino::Ruby::FunctionCall if RUBY_VERSION < '2.1'
   # @deprecated (but needed to support JRuby <= 9.2)
-  module_exec { define_method :call, Rhino::Ruby::FunctionCall.instance_method(:call) }
+  define_method :call, Rhino::Ruby::FunctionCall.instance_method(:call)
 
   def self.inherited(klass)
     # NOTE: in JRuby < 9.3 inherited won't be called for a Java class
