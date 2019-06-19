@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.files = `git ls-files`.split("\n").sort.
     reject { |file| file == 'therubyrhino_jar.gemspec' || file =~ /^jar\// }
 
-  s.add_dependency "therubyrhino_jar", '>= 1.7.3'
+  s.add_dependency "therubyrhino_jar", '>= 1.7.3', '< 1.7.7'
 
   s.add_development_dependency "rspec", "~> 2.14.1"
   s.add_development_dependency "mocha", "~> 0.13.3"
