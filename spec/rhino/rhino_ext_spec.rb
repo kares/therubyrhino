@@ -96,10 +96,6 @@ describe "NativeObject (scoped)" do
     @object = @context.newObject(@scope)
   end
   
-  after do
-    Rhino::JS::Context.exit
-  end
-  
   it_should_behave_like 'ScriptableObject'  
   
   it 'routes rhino methods' do
@@ -171,10 +167,6 @@ describe "NativeFunction" do
     
     object = @context.newObject(@scope)
     @object = Rhino::JS::ScriptableObject.getProperty(object, 'toString')
-  end
-
-  after do
-    Rhino::JS::Context.exit
   end
   
   it_should_behave_like 'ScriptableObject'
@@ -249,10 +241,6 @@ describe "NativeFunction (constructor)" do
     factory.enterContext(@context)
     
     @object = Rhino::JS::ScriptableObject.getProperty(@context.newObject(@scope), 'constructor')
-  end
-
-  after do
-    Rhino::JS::Context.exit
   end
   
   it_should_behave_like 'ScriptableObject'

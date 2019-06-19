@@ -20,15 +20,23 @@ module Rhino
       @context_factory ||= Rhino::JS::ContextFactory.new
     end
     
-    def context
+    def context(enter: true)
       @context || context_factory.call { |ctx| @context = ctx }
-      @context
+      @context.tap { Rhino::JS::Context.enter(@context, context_factory) }
     end
 
     def scope
-      context.initStandardObjects(nil, false)
+      context.initStandardObjects
     end
-    
+
+    def exit_context
+      Rhino::JS::Context.exit if @context
+    end
+
+    def self.included(base)
+      base.after { exit_context }
+    end
+
   end
 end
 
