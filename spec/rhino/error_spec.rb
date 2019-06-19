@@ -174,15 +174,13 @@ describe Rhino::JSError do
     hi = context.eval "( function hi(arg) { Hello.hello(arg); } )"
     begin
       hi.call(24)
-    rescue => e
-      e.should be_a Rhino::JSError
+      fail "expected to raise"
+    rescue Rhino::JSError => e
       e.value.should_not be nil
       e.value.should be_a Rhino::Ruby::Object
       e.value(true).should be_a RuntimeError # unwraps ruby object
       # prints the original message (beyond [ruby RuntimeError]) :
       e.message.should == "RuntimeError: hello"
-    else
-      fail "expected to rescue"
     end
     # V8::JSError: hello
     #   from (irb):4:in `hello'
