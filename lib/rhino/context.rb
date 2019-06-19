@@ -277,9 +277,6 @@ module Rhino
     # at org.mozilla.javascript.optimizer.Codegen.reportClassFileFormatException
 
     def code_generation_error?(exception) # :nodoc
-      if ( exception.is_a?(NativeException) rescue nil ) # JRuby 1.6 wrapping
-        exception = exception.cause
-      end
       if exception.class == Rhino::JS::EvaluatorException
         if exception.message.index(CODE_GENERATION_ERROR_MESSAGE)
           return true
