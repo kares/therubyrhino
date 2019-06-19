@@ -173,30 +173,47 @@ class Java::OrgMozillaJavascript::NativeObject
 
 end
 
+module Rhino
+  module Ruby
+    # @private
+    module FunctionCall
+      # make JavaScript functions callable Ruby style e.g. `fn.call('42')`
+      #
+      # NOTE: That invoking #call does not have the same semantics as
+      # JavaScript's Function#call but rather as Ruby's Method#call !
+      # Use #apply or #bind before calling to achieve the same effect.
+      def call(*args)
+        context = Rhino::JS::Context.enter; scope = current_scope(context)
+        # calling as a (var) stored function - no this === undefined "use strict"
+        # TODO can't pass Undefined.instance as this - it's not a Scriptable !?
+        this = Rhino::JS::ScriptRuntime.getGlobal(context)
+        js_args = Rhino.args_to_javascript(args, scope)
+        Rhino.to_ruby __call__(context, scope, this, js_args)
+      rescue Rhino::JS::JavaScriptException => e
+        raise Rhino::JSError.new(e)
+      ensure
+        Rhino::JS::Context.exit
+      end
+    end
+  end
+end
+
 # The base class for all JavaScript function objects.
 class Java::OrgMozillaJavascript::BaseFunction
   
   # Object call(Context context, Scriptable scope, Scriptable this, Object[] args)
   alias_method :__call__, :call
   
-  # make JavaScript functions callable Ruby style e.g. `fn.call('42')`
-  # 
-  # NOTE: That invoking #call does not have the same semantics as
-  # JavaScript's Function#call but rather as Ruby's Method#call !
-  # Use #apply or #bind before calling to achieve the same effect.
-  def call(*args)
-    context = Rhino::JS::Context.enter; scope = current_scope(context)
-    # calling as a (var) stored function - no this === undefined "use strict"
-    # TODO can't pass Undefined.instance as this - it's not a Scriptable !?
-    this = Rhino::JS::ScriptRuntime.getGlobal(context)
-    js_args = Rhino.args_to_javascript(args, scope)
-    Rhino.to_ruby __call__(context, scope, this, js_args)
-  rescue Rhino::JS::JavaScriptException => e
-    raise Rhino::JSError.new(e)
-  ensure
-    Rhino::JS::Context.exit
+  # @deprecated (but needed to support JRuby <= 9.2)
+  module_exec { define_method :call, Rhino::Ruby::FunctionCall.instance_method(:call) }
+
+  def self.inherited(klass)
+    # NOTE: in JRuby < 9.3 inherited won't be called for a Java class
+    # ... so this happens pretty much only for `Rhino::Ruby::Function`
+    klass.send(:include, Rhino::Ruby::FunctionCall)
+    super(klass)
   end
-  
+
   # bind a JavaScript function into the given (this) context
   def bind(this, *args)
     context = Rhino::JS::Context.enter; scope = current_scope(context)
