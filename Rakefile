@@ -27,7 +27,14 @@ require 'bundler/gem_helper'
     task('install') { gem_helper.install_gem }
 
     desc "Create tag #{version_tag} and build and push #{name}-#{version}.gem to Rubygems"
-    task('release') { gem_helper.release_gem }
+    task('release') do
+      gem_helper.instance_eval do
+        guard_clean
+        built_gem_path = build_gem
+        tag_version unless already_tagged?
+        rubygem_push(built_gem_path) if gem_push?
+      end
+    end
   end
 end
 
