@@ -108,13 +108,9 @@ class Java::OrgMozillaJavascript::ScriptableObject
     else
       if property = self[name_str]
         if property.is_a?(Rhino::JS::Function)
-          begin
-            context = Rhino::JS::Context.enter
-            scope = current_scope(context)
+          with_context do |context|
             js_args = Rhino.args_to_javascript(args, self) # scope == self
-            Rhino.to_ruby property.__call__(context, scope, self, js_args)
-          ensure
-            Rhino::JS::Context.exit
+            Rhino.to_ruby property.__call__(context, current_scope(context), self, js_args)
           end
         else
           if args.size > 0
@@ -129,9 +125,23 @@ class Java::OrgMozillaJavascript::ScriptableObject
   end
   
   protected
-  
+
+    def with_context
+      context = Rhino::JS::Context.getCurrentContext
+      unless context
+        context = Rhino::JS::Context.enter
+        context.initStandardObjects
+        context_exit = true
+      end
+      begin
+        yield(context)
+      ensure
+        Rhino::JS::Context.exit if context_exit
+      end
+    end
+
     def current_scope(context)
-      getParentScope || context.initStandardObjects
+      getParentScope || Rhino::JS::ScriptRuntime.getGlobal(context)
     end
   
 end
@@ -183,16 +193,17 @@ module Rhino
       # JavaScript's Function#call but rather as Ruby's Method#call !
       # Use #apply or #bind before calling to achieve the same effect.
       def call(*args)
-        context = Rhino::JS::Context.enter; scope = current_scope(context)
-        # calling as a (var) stored function - no this === undefined "use strict"
-        # TODO can't pass Undefined.instance as this - it's not a Scriptable !?
-        this = Rhino::JS::ScriptRuntime.getGlobal(context)
-        js_args = Rhino.args_to_javascript(args, scope)
-        Rhino.to_ruby __call__(context, scope, this, js_args)
-      rescue Rhino::JS::JavaScriptException => e
-        raise Rhino::JSError.new(e)
-      ensure
-        Rhino::JS::Context.exit
+        with_context do |context|
+          begin
+            # calling as a (var) stored function - no this === undefined "use strict"
+            # TODO can't pass Undefined.instance as this - it's not a Scriptable !?
+            this = Rhino::JS::ScriptRuntime.getGlobal(context)
+            js_args = Rhino.args_to_javascript(args, scope = current_scope(context))
+            Rhino.to_ruby __call__(context, scope, this, js_args)
+          rescue Rhino::JS::JavaScriptException => e
+            raise Rhino::JSError.new(e)
+          end
+        end
       end
     end
   end
@@ -217,21 +228,22 @@ class Java::OrgMozillaJavascript::BaseFunction
 
   # bind a JavaScript function into the given (this) context
   def bind(this, *args)
-    context = Rhino::JS::Context.enter; scope = current_scope(context)
-    args = Rhino.args_to_javascript(args, scope)
-    Rhino::JS::BoundFunction.new(context, scope, self, Rhino.to_javascript(this), args)
-  ensure
-    Rhino::JS::Context.exit    
+    with_context do |context|
+      args = Rhino.args_to_javascript(args, scope = current_scope(context))
+      Rhino::JS::BoundFunction.new(context, scope, self, Rhino.to_javascript(this), args)
+    end
   end
   
   # use JavaScript functions constructors from Ruby as `fn.new`
   def new(*args)
-    context = Rhino::JS::Context.enter; scope = current_scope(context)
-    construct(context, scope, Rhino.args_to_javascript(args, scope))
-  rescue Rhino::JS::JavaScriptException => e
-    raise Rhino::JSError.new(e)
-  ensure
-    Rhino::JS::Context.exit
+    with_context do |context|
+      begin
+        scope = current_scope(context)
+        construct(context, scope, Rhino.args_to_javascript(args, scope))
+      rescue Rhino::JS::JavaScriptException => e
+        raise Rhino::JSError.new(e)
+      end
+    end
   end
   
   # apply a function with the given context and (optional) arguments 
@@ -240,13 +252,14 @@ class Java::OrgMozillaJavascript::BaseFunction
   # NOTE: That #call from Ruby does not have the same semantics as
   # JavaScript's Function#call but rather as Ruby's Method#call !
   def apply(this, *args)
-    context = Rhino::JS::Context.enter; scope = current_scope(context)
-    args = Rhino.args_to_javascript(args, scope)
-    __call__(context, scope, Rhino.to_javascript(this), args)
-  rescue Rhino::JS::JavaScriptException => e
-    raise Rhino::JSError.new(e)
-  ensure
-    Rhino::JS::Context.exit
+    with_context do |context|
+      begin
+        args = Rhino.args_to_javascript(args, scope = current_scope(context))
+        __call__(context, scope, Rhino.to_javascript(this), args)
+      rescue Rhino::JS::JavaScriptException => e
+        raise Rhino::JSError.new(e)
+      end
+    end
   end
   alias_method :methodcall, :apply # V8::Function compatibility
   
