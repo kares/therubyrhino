@@ -5,12 +5,13 @@ shared_examples_for Rhino::Ruby::Scriptable, :shared => true do
   it "puts, gets and has a read/write attr" do
     start = mock('start')
     start.expects(:put).never
-    
+
+    @wrapper = wrapper
     @wrapper.unwrap.instance_eval do
       def foo; @foo; end
       def foo=(foo); @foo = foo; end
     end
-    
+
     @wrapper.put('foo', start, 42)
     @wrapper.has('foo', nil).should == true
     @wrapper.get('foo', nil).should == 42
@@ -20,21 +21,23 @@ shared_examples_for Rhino::Ruby::Scriptable, :shared => true do
   it "puts, gets and has a write only attr" do
     start = mock('start')
     start.expects(:put).never
-    
+
+    @wrapper = wrapper
     @wrapper.unwrap.instance_eval do
       def foo=(foo); @foo = foo; end
     end
-    
+
     @wrapper.put('foo', start, 42)
+    @wrapper.unwrap.instance_variable_get(:'@foo').should == 42
     @wrapper.has('foo', nil).should == true
     @wrapper.get('foo', nil).should be(nil)
-    @wrapper.unwrap.instance_variable_get(:'@foo').should == 42
   end
 
   it "puts, gets and has gets delegated if it acts like a Hash" do
     start = mock('start')
     start.expects(:put).never
-    
+
+    @wrapper = wrapper
     @wrapper.unwrap.instance_eval do
       def [](name); (@hash ||= {})[name]; end
       def []=(name, value); (@hash ||= {})[name] = value; end
@@ -49,7 +52,8 @@ shared_examples_for Rhino::Ruby::Scriptable, :shared => true do
   it "puts, gets and has non-existing property" do
     start = mock('start')
     start.expects(:put).once
-    
+
+    @wrapper = wrapper
     @wrapper.put('foo', start, 42)
     @wrapper.has('foo', nil).should == false
     @wrapper.get('foo', nil).should be(Rhino::JS::Scriptable::NOT_FOUND)
@@ -58,15 +62,14 @@ shared_examples_for Rhino::Ruby::Scriptable, :shared => true do
 end
 
 describe Rhino::Ruby::Object do
-  
-  before do
-    @wrapper = Rhino::Ruby::Object.wrap @object = Object.new
-  end
-  
+
+  let(:object) { Object.new }
+  let(:wrapper) { Rhino::Ruby::Object.wrap object }
+
   it "unwraps a ruby object" do
-    @wrapper.unwrap.should be(@object)
+    wrapper.unwrap.should be(object)
   end
-  
+
   it_should_behave_like Rhino::Ruby::Scriptable
   
   class UII < Object
@@ -162,13 +165,18 @@ describe Rhino::Ruby::Object do
 end
 
 describe Rhino::Ruby::Function do
-  
-  before do
-    @wrapper = Rhino::Ruby::Function.wrap @method = Object.new.method(:to_s)
+
+  let(:a_class) do
+    Class.new do
+      def self.sample; end
+      def inspect; 'SAMPLE' end
+    end
   end
-  
+  let(:method) { a_class.method(:sample) }
+  let(:wrapper) { Rhino::Ruby::Function.wrap method }
+
   it "unwraps a ruby method" do
-    @wrapper.unwrap.should be(@method)
+    wrapper.unwrap.should be(method)
   end
   
   it_should_behave_like Rhino::Ruby::Scriptable
@@ -222,8 +230,8 @@ describe Rhino::Ruby::Function do
     rb_function = Rhino::Ruby::Function.wrap klass.new.method(:foo)
     this = nil
     
-    args = [ 1.to_java, 2.to_java, 3.to_java ].to_java; js_return = nil
-    lambda { js_return = rb_function.call(context, scope, this, args) }.should_not raise_error
+    args = [ 1.to_java, 2.to_java, 3.to_java ].to_java
+    js_return = rb_function.call(context, scope, this, args)
     js_return.should == 1
   end
   
@@ -321,13 +329,12 @@ describe Rhino::Ruby::Function do
 end
 
 describe Rhino::Ruby::Constructor do
-  
-  before do
-    @wrapper = Rhino::Ruby::Constructor.wrap @class = Class.new(Object)
-  end
-  
+
+  let(:klass) { Class.new(Object) }
+  let(:wrapper) { Rhino::Ruby::Constructor.wrap(klass) }
+
   it "unwraps a ruby method" do
-    @wrapper.unwrap.should be(@class)
+    wrapper.unwrap.should be(klass)
   end
   
   it_should_behave_like Rhino::Ruby::Scriptable
