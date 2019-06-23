@@ -20,7 +20,7 @@ module Rhino
       @context_factory ||= Rhino::JS::ContextFactory.new
     end
     
-    def context(enter: true)
+    def context(enter = true)
       @context || context_factory.call { |ctx| @context = ctx }
       @context.tap { Rhino::JS::Context.enter(@context, context_factory) }
     end
@@ -46,7 +46,6 @@ RSpec.configure do |config|
   config.deprecation_stream = 'spec/deprecations.log'
 
   config.backtrace_clean_patterns = [
-    /gems\//,
     /lib\/rspec\/(core|expectations|matchers|mocks)/,
   ]
 end
