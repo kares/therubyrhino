@@ -181,7 +181,7 @@ module Rhino
           return super # assume a Ruby #call
         end
         _, scope, this, args = *args # Java Function#call dispatch
-        args = args.to_a # java.lang.Object[] -> Array
+        args = args.to_a # java.lang.Object[] (or nil) -> Array
         # JS function style :
         if ( arity = @callable.arity ) != -1 # (a1, *a).arity == -2
           if arity > -1 && args.size > arity # omit 'redundant' arguments
