@@ -45,7 +45,7 @@ describe Rhino::To do
     
     if (Java::JavaClass.for_name('org.mozilla.javascript.ConsString') rescue nil)
       it "converts a cons string" do
-        cons_string = org.mozilla.javascript.ConsString.new('1', '2')
+        cons_string = org.mozilla.javascript.ConsString.new('1'.to_java, '2'.to_java)
         Rhino.to_ruby(cons_string).should == '12'
       end
     end
