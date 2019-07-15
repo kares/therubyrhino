@@ -44,7 +44,7 @@ module Rhino
   def self.warn(msg) # :nodoc
     return if silence?
     # only print out deprecations once (even when non-silent)
-    if msg[0, 13] == '[DEPRECATION]'
+    if msg.start_with?('[DEPRECATION]')
       return nil if @@warnings[msg]
       @@warnings[msg] = true
     end
